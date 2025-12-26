@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>6. Sınıf Fen Bilimleri - 60 Soru Yeni Nesil Maraton</title>
+    <style>
+        :root { --p: #3498db; --s: #27ae60; --e: #e74c3c; --d: #2c3e50; --gray: #95a5a6; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        #score-board { display: flex; gap: 20px; background: var(--d); color: white; padding: 12px 25px; border-radius: 50px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: sticky; top: 10px; z-index: 100; }
+        .score-val { color: #f1c40f; margin-left: 5px; font-weight: bold; }
+        #quiz-box { background: white; width: 100%; max-width: 850px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 30px; min-height: 500px; }
+        .progress-bar { width: 100%; height: 10px; background: #eee; border-radius: 5px; margin-bottom: 20px; overflow: hidden; }
+        #progress-fill { height: 100%; background: var(--p); width: 0%; transition: 0.4s; }
+        .q-text { font-size: 19px; color: var(--d); margin-bottom: 20px; font-weight: 600; line-height: 1.5; }
+        .data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .data-table th, .data-table td { border: 1px solid #ddd; padding: 10px; text-align: center; }
+        .opt-btn { width: 100%; padding: 14px; margin: 8px 0; border: 2px solid #dfe6e9; border-radius: 10px; background: #fff; cursor: pointer; text-align: left; font-size: 16px; transition: 0.2s; }
+        .opt-btn:not(.disabled):hover { border-color: var(--p); background: #f8fbfc; }
+        .correct { background-color: var(--s) !important; color: white !important; }
+        .wrong { background-color: var(--e) !important; color: white !important; }
+        .disabled { cursor: not-allowed; opacity: 0.9; }
+        .status-msg { padding: 15px; border-radius: 8px; text-align: center; font-weight: bold; margin-top: 20px; color: white; display: none; }
+        .nav-controls { display: flex; justify-content: space-between; margin-top: 30px; gap: 10px; }
+        .btn-main { padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        #pass-btn { background: var(--gray); color: white; }
+        #check-btn { background: var(--d); color: white; }
+        #next-btn { background: var(--p); color: white; display: none; }
+    </style>
+</head>
+<body>
+
+<div id="score-board">
+    <div>Doğru: <span id="s-cor" class="score-val">0</span></div>
+    <div>Yanlış: <span id="s-wr" class="score-val">0</span></div>
+    <div>Pas: <span id="s-pass" class="score-val">0</span></div>
+</div>
+
+<div id="quiz-box">
+    <div class="progress-bar"><div id="progress-fill"></div></div>
+    <div id="q-counter" style="margin-bottom:10px; font-weight:bold; color: var(--gray);">Soru: 1 / 60</div>
+    <div id="q-container"></div>
+    <div id="msg" class="status-msg"></div>
+
+    <div class="nav-controls">
+        <button id="pass-btn" class="btn-main" onclick="passQuestion()">Soruyu Pas Geç</button>
+        <button id="check-btn" class="btn-main" onclick="validate()">Cevabı Kontrol Et</button>
+        <button id="next-btn" class="btn-main" onclick="nextQuestion()">Sonraki Soru</button>
+    </div>
+</div>
+
+<audio id="snd-correct" src="correct.mp3"></audio>
+<audio id="snd-wrong" src="wrong.mp3"></audio>
+
+<script>
+const quizData = [
+    // 1-10: SİNGAPUR MODELİ & ANALİZ (HIZ-KUVVET)
+    { q: "Tablodaki verilere göre bu aracın sürati nedir?", type: "table", table: [["Zaman(sn)", "2", "4", "6"], ["Yol(m)", "20", "40", "60"]], opts: ["5 m/s", "10 m/s", "20 m/s", "40 m/s"], ans: 1 },
+    { q: "K cismine Doğu'ya 40N, Batı'ya 60N uygulanıyor. Bileşkenin Doğu yönünde 10N olması için F3 ne olmalıdır?", opts: ["30N Doğu", "20N Doğu", "10N Batı", "50N Batı"], ans: 0 },
+    { q: "Eşit sürede K aracı 50m, L aracı 80m yol alıyor. Hangisi daha süratlidir?", opts: ["K aracı", "L aracı", "Süratler eşit", "Zaman bilinmeli"], ans: 1 },
+    { q: "Dengelenmiş kuvvetlerin etkisindeki bir cisim için hangisi kesinlikle doğrudur?", opts: ["Hızlanıyordur", "Yavaşlıyordur", "Duruyor veya sabit süratle gidiyordur", "Yön değiştiriyordur"], ans: 2 },
+    { q: "Sürati 20 m/s olan bir araç 3 saniyede kaç metre yol alır?", opts: ["6.6 m", "23 m", "60 m", "100 m"], ans: 2 },
+    { q: "Kuvvet-Zaman grafiğinde net kuvvetin sıfır olduğu bir bölge neyi ifade eder?", opts: ["Cisim hızlanıyor", "Cisim dengelenmiş kuvvet etkisinde", "Cisim yavaşlıyor", "Cisim duruyor"], ans: 1 },
+    { q: "100 metreyi 5 saniyede koşan bir atletin sürati kaç m/s'dir?", opts: ["10", "20", "25", "50"], ans: 1 },
+    { q: "Doğuya 100N, Batıya 30N çeken iki grup halat çekme yarışındadır. Bileşke kuvvet nedir?", opts: ["70N Doğu", "130N Doğu", "70N Batı", "30N Batı"], ans: 0 },
+    { q: "Bir cisim sabit süratle hareket ediyorsa, eşit zaman aralıklarında aldığı yollar nasıldır?", opts: ["Artar", "Azalır", "Eşittir", "Değişkendir"], ans: 2 },
+    { q: "Aşağıdaki birimlerden hangisi kuvvet birimidir?", opts: ["Metre", "Newton", "Saniye", "Joule"], ans: 1 },
+
+    // 11-60: PDF KAZANIMLARI & GENEL MÜFREDAT
+    { q: "Güneş sistemindeki en küçük gezegen hangisidir?", opts: ["Venüs", "Mars", "Merkür", "Dünya"], ans: 2 },
+    { q: "Kızıl Gezegen olarak bilinen gezegen hangisidir?", opts: ["Jüpiter", "Satürn", "Mars", "Uranüs"], ans: 2 },
+    { q: "Güneş'e en uzak gezegen hangisidir?", opts: ["Uranüs", "Satürn", "Neptün", "Plüton"], ans: 2 },
+    { q: "İç gezegenler ile dış gezegenler arasındaki sınırı ne belirler?", opts: ["Ay", "Güneş", "Asteroit Kuşağı", "Kuyruklu Yıldızlar"], ans: 2 },
+    { q: "Halkası en belirgin olan dev gezegen hangisidir?", opts: ["Uranüs", "Satürn", "Neptün", "Jüpiter"], ans: 1 },
+    { q: "Dünya'nın ikizi olarak adlandırılan gezegen hangisidir?", opts: ["Mars", "Venüs", "Merkür", "Neptün"], ans: 1 },
+    { q: "Uydusu olmayan gezegen çifti hangisidir?", opts: ["Dünya-Venüs", "Merkür-Venüs", "Mars-Merkür", "Jüpiter-Satürn"], ans: 1 },
+    { q: "Güneş sisteminin en büyük gezegeni hangisidir?", opts: ["Satürn", "Jüpiter", "Neptün", "Dünya"], ans: 1 },
+    { q: "Yan yatmış bir varil gibi dönen gezegen hangisidir?", opts: ["Uranüs", "Neptün", "Satürn", "Jüpiter"], ans: 0 },
+    { q: "Sürat yolun neye bölünmesiyle bulunur?", opts: ["Kuvvet", "Zaman", "Kütle", "Hacim"], ans: 1 },
+    { q: "Çiçekte erkek üreme hücresi (polen) nerede üretilir?", opts: ["Dişicik tepesi", "Başçık", "Taç yaprak", "Çanak yaprak"], ans: 1 },
+    { q: "Tozlaşma sonrası polen ve yumurtanın birleşmesine ne denir?", opts: ["Çimlenme", "Döllenme", "Büyüme", "Farklılaşma"], ans: 1 },
+    { q: "Döllenmiş yumurtaya ne ad verilir?", opts: ["Embriyo", "Zigot", "Fetüs", "Bebek"], ans: 1 },
+    { q: "Çiçeğin renkli, kokulu ve böcekleri çeken kısmı hangisidir?", opts: ["Çanak yaprak", "Taç yaprak", "Çiçek sapı", "Dişicik borusu"], ans: 1 },
+    { q: "Tohumun çimlenmesi için hangisi GEREKLİ DEĞİLDİR?", opts: ["Su", "Işık", "Sıcaklık", "Oksijen"], ans: 1 },
+    { q: "Memeli hayvanlarda üreme biçimi nasıldır?", opts: ["Yumurta ile", "Doğurarak", "Bölünerek", "Rejenerasyon"], ans: 1 },
+    { q: "Kuşlarda yavru bakımı görülür mü?", opts: ["Evet", "Hayır", "Sadece yırtıcılarda", "Sadece suda yaşayanlarda"], ans: 0 },
+    { q: "Hidra canlısında görülen eşeysiz üreme türü hangisidir?", opts: ["Bölünme", "Rejenerasyon", "Tomurcuklanma", "Vejetatif"], ans: 2 },
+    { q: "Patatesin gözlerinden yeni bitki oluşması hangi üreme türüdür?", opts: ["Vejetatif", "Bölünme", "Döllenme", "Tomurcuklanma"], ans: 0 },
+    { q: "Kertenkelenin kopan kuyruğunun yenilenmesi bir üreme midir?", opts: ["Evet", "Hayır, yenilenmedir", "Sadece kışın üremedir", "Sadece dişilerde üremedir"], ans: 1 },
+    { q: "Deniz yıldızının kopan kolundan yeni bir birey oluşması hangi üreme türüdür?", opts: ["Bölünme", "Tomurcuklanma", "Rejenerasyon", "Vejetatif"], ans: 2 },
+    { q: "İnsanlarda döllenme nerede gerçekleşir?", opts: ["Yumurtalık", "Yumurta kanalı", "Döl yatağı", "Vajina"], ans: 1 },
+    { q: "Sperm hücrelerinin üretildiği yapı hangisidir?", opts: ["Testis", "Salgı bezleri", "Sperm kanalı", "Penis"], ans: 0 },
+    { q: "Zigotun yerleşip geliştiği yer neresidir?", opts: ["Yumurta kanalı", "Döl yatağı (Rahim)", "Yumurtalık", "Vajina"], ans: 1 },
+    { q: "Kelebeklerde görülen gelişim sürecine ne ad verilir?", opts: ["Büyüme", "Başkalaşım", "Döllenme", "Tozlaşma"], ans: 1 },
+    { q: "Tavuk yumurta ile mi doğurarak mı ürer?", opts: ["Doğurarak", "Yumurta ile", "Bölünerek", "Vejetatif"], ans: 1 },
+    { q: "Sürüngenlerde yavru bakımı var mıdır?", opts: ["Evet", "Hayır", "Sadece yılanlarda", "Sadece kaplumbağalarda"], ans: 1 },
+    { q: "Kurbağalar yaşam döngülerinde hangi süreci geçirir?", opts: ["Başkalaşım", "Doğurma", "Tomurcuklanma", "Vejetatif"], ans: 0 },
+    { q: "Tohumun uyku halinden çıkıp filizlenmesine ne denir?", opts: ["Döllenme", "Tozlaşma", "Çimlenme", "Büyüme"], ans: 2 },
+    { q: "Bitkide koruyucu olan, fotosentez yapan yeşil yaprak hangisidir?", opts: ["Taç yaprak", "Çanak yaprak", "Erkek organ", "Dişicik tepesi"], ans: 1 },
+    { q: "Kuvvet ne ile ölçülür?", opts: ["Termometre", "Dinamometre", "Barometre", "Kronometre"], ans: 1 },
+    { q: "Zıt yönlü 50N ve 50N iki kuvvetin bileşkesi nedir?", opts: ["100N", "50N", "0N", "25N"], ans: 2 },
+    { q: "Aynı yönlü 10N ve 20N kuvvetlerin bileşkesi nedir?", opts: ["10N", "30N", "200N", "5N"], ans: 1 },
+    { q: "Sürati 5 m/s olan bir çocuk 10 saniyede kaç metre gider?", opts: ["2m", "50m", "15m", "100m"], ans: 1 },
+    { q: "Güneş sistemindeki en sıcak gezegen hangisidir?", opts: ["Merkür", "Venüs", "Mars", "Dünya"], ans: 1 },
+    { q: "Ay bir gezegen midir?", opts: ["Evet", "Hayır, uydudur", "Hayır, yıldızdır", "Hayır, kuyruklu yıldızdır"], ans: 1 },
+    { q: "Gezegenlerin Güneş etrafındaki yollarına ne denir?", opts: ["Yörünge", "Kanal", "Kuşak", "Halka"], ans: 0 },
+    { q: "Embriyo besinini gelişiminin başında nereden karşılar?", opts: ["Havadan", "Yumurta içindeki besinden", "Topraktan", "Sudan"], ans: 1 },
+    { q: "Arıların çiçekten çiçeğe gezmesi bitkide neyi kolaylaştırır?", opts: ["Çimlenmeyi", "Tozlaşmayı", "Boşaltımı", "Solunumu"], ans: 1 },
+    { q: "Sperm ve yumurtanın çekirdeklerinin birleşmesine ne denir?", opts: ["Döllenme", "Bölünme", "Gelişme", "Başkalaşım"], ans: 0 },
+    { q: "Güneş sisteminde en çok uyduya sahip gezegenlerden biri hangisidir?", opts: ["Dünya", "Satürn", "Venüs", "Merkür"], ans: 1 },
+    { q: "Kuvvetin birimi kimin adıyla anılır?", opts: ["Einstein", "Newton", "Pascal", "Galileo"], ans: 1 },
+    { q: "Bir cismin sürati sıfır ise o cisim ne yapıyordur?", opts: ["Hızlanıyordur", "Duruyordur", "Sabit gidiyordur", "Geri gidiyordur"], ans: 1 },
+    { q: "Hangi canlı doğurarak ürer?", opts: ["Balık", "Kuş", "Balina (Memeli)", "Timsah"], ans: 2 },
+    { q: "Vejetatif üreme hangi canlı grubunda görülür?", opts: ["Hayvanlar", "Bitkiler", "Mantarlar", "Bakteriler"], ans: 1 },
+    { q: "Çilek bitkisi hangi yolla eşeysiz ürer?", opts: ["Sürünücü gövde (Vejetatif)", "Bölünme", "Tomurcuklanma", "Rejenerasyon"], ans: 0 },
+    { q: "Erkek üreme organı polenleri hangi kısımda tutar?", opts: ["Sapçık", "Başçık", "Dişicik borusu", "Yumurtalık"], ans: 1 },
+    { q: "Döllenme nerede gerçekleşirse canlı vücut dışında gelişir?", opts: ["Dış döllenme", "İç döllenme", "Başkalaşım", "Çimlenme"], ans: 0 },
+    { q: "Yumurta hücresi sperme göre nasıldır?", opts: ["Daha küçük ve hareketli", "Daha büyük ve hareketsiz", "Aynı boyutta", "Daha hızlı"], ans: 1 },
+    { q: "60 dakikada 60 km giden bir aracın sürati kaç km/sa'dir?", opts: ["1", "60", "3600", "120"], ans: 1 }
+];
+
+let current = 0;
+let scores = { cor: 0, wr: 0, pass: 0 };
+let userAns = null;
+let isAnswered = false;
+
+function load() {
+    isAnswered = false;
+    userAns = null;
+    const data = quizData[current];
+    const container = document.getElementById('q-container');
+    const msg = document.getElementById('msg');
+    
+    document.getElementById('q-counter').innerText = `Soru: ${current + 1} / 60`;
+    document.getElementById('progress-fill').style.width = `${((current+1)/60)*100}%`;
+    document.getElementById('check-btn').style.display = "block";
+    document.getElementById('pass-btn').style.display = "block";
+    document.getElementById('next-btn').style.display = "none";
+    msg.style.display = "none";
+
+    let html = `<div class="q-text">${data.q}</div>`;
+    if(data.type === "table") {
+        html += `<table class="data-table">`;
+        data.table.forEach(row => html += `<tr>${row.map(c => `<td>${c}</td>`).join('')}</tr>`);
+        html += `</table>`;
+    }
+    html += `<div class="options">`;
+    data.opts.forEach((o, i) => html += `<button class="opt-btn" onclick="select(${i}, this)">${o}</button>`);
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+function select(idx, el) {
+    if(isAnswered) return;
+    document.querySelectorAll('.opt-btn').forEach(b => b.style.borderColor = "#dfe6e9");
+    el.style.borderColor = "var(--p)";
+    userAns = idx;
+}
+
+function validate() {
+    if(userAns === null || isAnswered) return;
+    isAnswered = true;
+    const data = quizData[current];
+    const btns = document.querySelectorAll('.opt-btn');
+    const msg = document.getElementById('msg');
+    
+    btns.forEach(b => b.classList.add('disabled'));
+    document.getElementById('pass-btn').style.display = "none";
+    document.getElementById('check-btn').style.display = "none";
+    document.getElementById('next-btn').style.display = "block";
+
+    if(userAns === data.ans) {
+        scores.cor++;
+        btns[userAns].classList.add('correct');
+        document.getElementById('snd-correct').play();
+        msg.innerText = "TEBRİKLER! DOĞRU CEVAP.";
+        msg.style.background = "var(--s)";
+    } else {
+        scores.wr++;
+        btns[userAns].classList.add('wrong');
+        btns[data.ans].classList.add('correct');
+        document.getElementById('snd-wrong').play();
+        msg.innerText = `HATA! DOĞRU CEVAP: ${data.opts[data.ans]}`;
+        msg.style.background = "var(--e)";
+    }
+    msg.style.display = "block";
+    updateScores();
+}
+
+function passQuestion() {
+    if(isAnswered) return;
+    scores.pass++;
+    updateScores();
+    nextQuestion();
+}
+
+function updateScores() {
+    document.getElementById('s-cor').innerText = scores.cor;
+    document.getElementById('s-wr').innerText = scores.wr;
+    document.getElementById('s-pass').innerText = scores.pass;
+}
+
+function nextQuestion() {
+    if(current < 59) {
+        current++;
+        load();
+    } else {
+        document.getElementById('quiz-box').innerHTML = `
+            <div style="text-align:center">
+                <h2>🏁 Maraton Tamamlandı!</h2>
+                <p style="font-size:20px;">Doğru: ${scores.cor} | Yanlış: ${scores.wr} | Pas: ${scores.pass}</p>
+                <button class="btn-main" onclick="location.reload()" style="background:var(--p); color:white">Yeniden Başla</button>
+            </div>`;
+    }
+}
+
+window.onload = load;
+</script>
+</body>
+</html>
